@@ -94,6 +94,7 @@ import type { AgentExecution } from '@/modules/agents/entities/agent-execution.e
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import type { SystemAgentUsageRelay } from '@/modules/agents/system-agents/system-agent-usage-relay';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -502,6 +503,8 @@ describe('AgentExecutionRepository', () => {
 					mock<AgentExecutionUpdateBroadcaster>(),
 					storage,
 					Container.get(AgentMessageRepository),
+					mock<AgentExecutionThreadRepository>(),
+					mock<AgentFileBridge>(),
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(

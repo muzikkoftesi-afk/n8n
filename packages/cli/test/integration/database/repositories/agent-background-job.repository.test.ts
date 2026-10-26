@@ -35,6 +35,7 @@ import type { AgentMessageRepository } from '@/modules/agents/repositories/agent
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 
 import { createOwner } from '../../shared/db/users';
@@ -270,6 +271,8 @@ describe('AgentBackgroundJobRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
 			mock<AgentMessageRepository>(),
+			mock<AgentExecutionThreadRepository>(),
+			mock<AgentFileBridge>(),
 		);
 		if (recover) {
 			await repository.settleIfActive(finishingId, { status: 'completed', result: 'Done' });
@@ -819,6 +822,8 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentExecutionUpdateBroadcaster>(),
 				checkpointStorage,
 				mock<AgentMessageRepository>(),
+				mock<AgentExecutionThreadRepository>(),
+				mock<AgentFileBridge>(),
 			);
 			const wakeService = new AgentWakeService(
 				repository,
