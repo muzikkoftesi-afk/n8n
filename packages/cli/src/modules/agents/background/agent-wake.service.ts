@@ -342,13 +342,13 @@ export class AgentWakeService {
 				message: formatWakeMessage(jobs),
 				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
-					tasks: jobs.flatMap(({ id, title, kind, status }) =>
+					tasks: jobs.flatMap(({ id, title, kind, status, files }) =>
 						status === 'running' ||
 						status === 'suspended' ||
 						status === 'paused' ||
 						jobs[0]?.pauseRequestId
 							? []
-							: [{ id, title, kind, status }],
+							: [{ id, title, kind, status, ...(files?.length ? { files } : {}) }],
 					),
 				},
 				memory: { threadId, resourceId },

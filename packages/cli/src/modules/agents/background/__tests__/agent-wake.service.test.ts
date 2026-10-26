@@ -216,8 +216,9 @@ describe('AgentWakeService', () => {
 
 	it('passes only the delivered jobs and their display fields to the signal', async () => {
 		const { service, jobRepository, orchestrator } = setup();
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
-			makeJob(),
+			makeJob({ files: [file] }),
 			makeJob({ id: 'job-2', kind: 'workflow', status: 'failed', error: 'Private error' }),
 			makeJob({ id: 'job-3', status: 'cancelled' }),
 			makeJob({
@@ -231,7 +232,13 @@ describe('AgentWakeService', () => {
 			expect.objectContaining({
 				backgroundJobSignal: {
 					tasks: [
-						{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
+						{
+							id: 'job-1',
+							title: 'Research',
+							kind: 'subagent',
+							status: 'completed',
+							files: [file],
+						},
 						{ id: 'job-2', title: 'Research', kind: 'workflow', status: 'failed' },
 						{ id: 'job-3', title: 'Research', kind: 'subagent', status: 'cancelled' },
 					],
