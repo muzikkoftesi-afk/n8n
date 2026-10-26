@@ -55,6 +55,14 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 		return await this.findBy({ threadId, ...scope });
 	}
 
+	/** Files of one delegation tree that one thread made. */
+	async findCreatedByThread(
+		createdByThreadId: string,
+		scope: { projectId: string; threadId: string },
+	): Promise<AgentChatAttachment[]> {
+		return await this.findBy({ createdByThreadId, ...scope });
+	}
+
 	async findByIds(ids: string[]): Promise<AgentChatAttachment[]> {
 		return await this.findBy({ id: In(ids) });
 	}
