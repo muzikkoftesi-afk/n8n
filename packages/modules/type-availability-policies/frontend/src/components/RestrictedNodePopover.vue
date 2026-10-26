@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { ProjectType } from '@n8n/rest-api-client';
 import { unrefElement, useActiveElement, useElementHover, type MaybeElement } from '@vueuse/core';
 import { computed, getCurrentInstance, ref, watch } from 'vue';
 
@@ -27,6 +28,8 @@ const props = withDefaults(
 		align?: 'start' | 'center' | 'end';
 		sideOffset?: number;
 		markerSize?: 'small' | 'xsmall';
+		/** The project the restriction applies to, when it is not the open one. */
+		projectType?: ProjectType | null;
 	}>(),
 	{
 		kind: 'node',
@@ -37,6 +40,7 @@ const props = withDefaults(
 		align: 'center',
 		sideOffset: 24,
 		markerSize: 'small',
+		projectType: undefined,
 	},
 );
 
@@ -75,7 +79,11 @@ const wantsOpen = computed(
 );
 const open = useExclusiveOpen(wantsOpen);
 
-const { copy: contactCopy } = useRestrictionContact(() => props.restriction);
+const { copy: contactCopy } = useRestrictionContact(
+	() => props.restriction,
+	undefined,
+	() => props.projectType,
+);
 const scopeKey = computed<BaseTextKey>(() => {
 	const scope = props.restriction?.scope;
 	return scope ? SCOPE_LABEL_KEY[scope] : RESTRICTED_TYPE_COPY[props.kind].title;
