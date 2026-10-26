@@ -89,8 +89,11 @@ describe('ExecutionRecorder', () => {
 
 	it('keeps the initial background signal in snapshots and final storage', () => {
 		const onSnapshot = vi.fn();
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
 		const recorder = new ExecutionRecorder(undefined, onSnapshot, {
-			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			tasks: [
+				{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed', files: [file] },
+			],
 		});
 		const initial = structuredClone(recorder.getMessageRecord().timeline);
 		expect(initial).toEqual([
@@ -98,7 +101,15 @@ describe('ExecutionRecorder', () => {
 				type: 'background-task-signal',
 				timestamp: recorder.startedAt.getTime(),
 				signal: {
-					tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+					tasks: [
+						{
+							id: 'job-1',
+							title: 'Research',
+							kind: 'subagent',
+							status: 'completed',
+							files: [file],
+						},
+					],
 				},
 			},
 		]);
