@@ -145,8 +145,9 @@ describe('delegate_subagent background mode', () => {
 		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
 	});
 
-	it('rejects files, which background sub-agents cannot receive', async () => {
+	it('passes files to the background sub-agent', async () => {
 		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
@@ -160,8 +161,11 @@ describe('delegate_subagent background mode', () => {
 			{ persistence },
 		);
 
-		expect(output).toMatchObject({ status: 'rejected', note: expect.stringContaining('files') });
-		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
+		expect(output).toMatchObject({ status: 'started' });
+		expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+			expect.objectContaining({ fileIds: ['file-1'] }),
+			expect.anything(),
+		);
 	});
 
 	it('rejects when the thread carries no host metadata', async () => {
