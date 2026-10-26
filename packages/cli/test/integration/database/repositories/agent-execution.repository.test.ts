@@ -513,6 +513,7 @@ describe('AgentExecutionRepository', () => {
 						mock<AgentToolApprovalService>(),
 						repository,
 						mock<SystemAgentUsageRelay>(),
+						mock<AgentChatAttachmentService>({ returnToParent: async () => [] }),
 					),
 					service,
 					mockLogger(),
