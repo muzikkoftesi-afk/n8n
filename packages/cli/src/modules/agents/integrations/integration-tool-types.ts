@@ -193,6 +193,8 @@ export interface IntegrationActionParams {
 	runId?: string;
 	toolCallId?: string;
 	currentMessageContext?: IntegrationMessageContext;
+	/** Read scope for `input.fileIds`. Undefined when the run has no thread. */
+	fileScope?: { projectId: string; threadId: string };
 }
 
 export interface IntegrationActionExecutor {

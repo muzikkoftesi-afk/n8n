@@ -49,6 +49,12 @@ const platformChannelIdSchema = z
 	.min(1)
 	.describe('Platform channel ID, for example a Slack C... channel ID. Do not pass a name.');
 
+export const fileIdsSchema = z
+	.array(z.string().min(1))
+	.min(1)
+	.optional()
+	.describe('IDs of files to send with the message, such as files from tool results.');
+
 const searchLimitSchema = z
 	.number()
 	.int()
@@ -150,6 +156,7 @@ const respondActionInputSchema = z.object({
 	input: z
 		.object({
 			message: messageSchema,
+			fileIds: fileIdsSchema,
 		})
 		.strict(),
 });
@@ -160,6 +167,7 @@ const sendDmActionInputSchema = z.object({
 		.object({
 			userId: platformUserIdSchema,
 			message: messageSchema,
+			fileIds: fileIdsSchema,
 		})
 		.strict(),
 });
@@ -170,6 +178,7 @@ const sendChannelMessageActionInputSchema = z.object({
 		.object({
 			channelId: platformChannelIdSchema,
 			message: messageSchema,
+			fileIds: fileIdsSchema,
 		})
 		.strict(),
 });
