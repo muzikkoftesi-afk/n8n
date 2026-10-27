@@ -6,6 +6,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../../../agent-chat-attachment.service';
+import type { AgentOutboundFiles } from '../../agent-outbound-files.service';
 import { AgentChatBridge } from '../../agent-chat-bridge';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
@@ -305,7 +306,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		chatIntegrationService,
 		registry,
 		channelRateLimitGuard,
-		mock<AgentChatAttachmentService>(),
+		mock<AgentOutboundFiles>(),
 	);
 	const descriptor = getIntegrationToolConnectionDescriptors([params.integration], 'agent-1')[0];
 

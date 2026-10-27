@@ -68,6 +68,7 @@ import type { ChatIntegrationService, ChatInstance } from '../chat-integration.s
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import { AgentOutboundFiles } from '../agent-outbound-files.service';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -153,7 +154,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -253,7 +254,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -300,7 +301,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -351,7 +352,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -388,7 +389,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -429,7 +430,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -504,7 +505,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
 
@@ -572,7 +573,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -618,7 +619,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -659,7 +660,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -711,7 +712,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -780,7 +781,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -836,7 +837,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -887,7 +888,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
 		const inboundThreadId = 'discord:800000000000000001:700000000000000001:600000000000000001';
@@ -958,7 +959,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
 		const explicitThreadId = 'discord:800000000000000001:700000000000000002:600000000000000001';
@@ -1022,7 +1023,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1050,7 +1051,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1107,7 +1108,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -1212,7 +1213,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -1284,7 +1285,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -1370,7 +1371,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				registry,
 				new ChannelRateLimitGuard(),
-				mock<AgentChatAttachmentService>(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 			return { executor, descriptor, thread };
@@ -1470,7 +1471,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
-				mock<AgentChatAttachmentService>(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1496,7 +1497,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
-				mock<AgentChatAttachmentService>(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1521,7 +1522,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
-				mock<AgentChatAttachmentService>(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1564,7 +1565,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			guard,
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1611,7 +1612,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			guard,
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1671,7 +1672,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			guard,
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1718,7 +1719,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([teams], 'agent-1')[0];
 		return { chat, executor, descriptor };
@@ -1838,13 +1839,13 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				chatIntegrationService,
 				registry,
 				new ChannelRateLimitGuard(),
-				attachmentService,
+				new AgentOutboundFiles(attachmentService, registry),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([integration], 'agent-1')[0];
 			return { executor, descriptor, thread, channel, attachmentService };
 		}
 
-		it('uploads readable files with a respond in a chat-triggered turn', async () => {
+		it('queues the files of a respond in a chat-triggered turn for the final reply', async () => {
 			const { executor, descriptor, thread, attachmentService } = buildExecutor();
 
 			const result = await executor.execute({
@@ -1856,8 +1857,29 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				fileScope,
 			});
 
-			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(result).toEqual({
+				ok: true,
+				queuedFileIds: ['file-1'],
+				note: expect.stringContaining('final reply'),
+			});
 			expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts the files of a respond outside chat-triggered turns at once', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: { ...currentMessageContext, replyExpectation: undefined },
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
 			expect(thread.post).toHaveBeenCalledWith({
 				raw: 'Here is the chart',
 				files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
@@ -1886,6 +1908,30 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			});
 		});
 
+		it('posts a respond card with files at once in a chat-triggered turn', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: {
+					message: { card: { components: [{ type: 'section', text: 'Chart' }] } },
+					fileIds: ['file-1'],
+				},
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({ ok: true, messageContext: expect.anything() }),
+			);
+			expect(thread.post).toHaveBeenCalledWith({
+				card: expect.objectContaining({ type: 'card' }),
+				files: [expect.objectContaining({ filename: 'chart.png' })],
+			});
+		});
+
 		it('posts Telegram files as attachments typed by MIME type', async () => {
 			const { executor, descriptor, thread } = buildExecutor(telegram);
 
@@ -1898,6 +1944,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 					...currentMessageContext,
 					integrationConnectionId: 'telegram:cred-telegram',
 					platform: 'telegram',
+					replyExpectation: undefined,
 				},
 				fileScope,
 			});
