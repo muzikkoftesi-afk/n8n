@@ -365,6 +365,7 @@ export class AgentWakeService {
 		try {
 			const first = jobs[0];
 			const deliveredIds = new Set(jobs.map((job) => job.id));
+
 			const plan = await this.planService.findActivePlan(threadId, {});
 			const leaves = plan ? planLeaves(plan.data) : [];
 			const isFinal =
@@ -376,6 +377,7 @@ export class AgentWakeService {
 						(['running', 'suspended', 'paused'].includes(job.status) ||
 							(job.notifiedAt === null && !deliveredIds.has(job.id))),
 				);
+
 			await this.orchestrator.executeForWake({
 				agentId: agent.id,
 				projectId: agent.projectId,
