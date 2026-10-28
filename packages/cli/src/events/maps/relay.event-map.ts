@@ -539,6 +539,7 @@ export type RelayEventMap = {
 	};
 
 	'credentials-updated': {
+		descriptionOnly?: boolean;
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
