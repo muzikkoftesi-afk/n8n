@@ -18,6 +18,7 @@ import {
 	SkillRuntimeService,
 	SkillService,
 	type SkillTarget,
+	toSkillUpdate,
 } from '@/modules/skills';
 
 import type { AgentHistory } from './entities/agent-history.entity';
@@ -353,11 +354,10 @@ export class AgentSkillRefsService {
 				const current = await this.skillsForRefs([{ type: 'skill', id: ref.id }], ctx);
 				await this.skillService.saveTrusted(
 					ref.id,
-					{
-						...bodies[ref.id],
-						references: bodies[ref.id].references ?? [],
-						baseSkillHash: getAgentSkillHash(current[ref.id]),
-					},
+					toSkillUpdate(
+						{ ...bodies[ref.id], references: bodies[ref.id].references ?? [] },
+						getAgentSkillHash(current[ref.id]),
+					),
 					creatorId,
 					ctx,
 				);
