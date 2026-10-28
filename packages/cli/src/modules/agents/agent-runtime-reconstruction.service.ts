@@ -1028,10 +1028,22 @@ export class AgentRuntimeReconstructionService {
 
 	private async injectRuntimeDependencies(params: RuntimeDependencies): Promise<void> {
 		const { agent, agentId, projectId, runtimeProfile, config, abortSignal } = params;
+
 		throwIfAborted(abortSignal);
+
 		agent.nativeToolDeferral({
-			eagerToolNames: [...CORE_WORKSPACE_TOOL_NAMES, 'load_skill', 'mark_session_failed'],
+			eagerToolNames: [
+				...CORE_WORKSPACE_TOOL_NAMES,
+				'load_skill',
+				'mark_session_failed',
+				'create_plan',
+				'read_plan',
+				'update_plan',
+				'close_plan',
+				'resume_background_jobs',
+			],
 		});
+
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
 		throwIfAborted(abortSignal);
