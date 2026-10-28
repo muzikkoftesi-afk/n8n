@@ -2149,7 +2149,7 @@ describe('PromotionsService', () => {
 					projectConflictPolicy: 'overwrite',
 					conflictPolicy: 'new-version',
 					idPolicy: 'source',
-					publishingPolicy: 'match-source',
+					publishingPolicy: 'preserve-target-state',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
@@ -2475,6 +2475,7 @@ describe('PromotionsService', () => {
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
 						credentialConflictPolicy: 'overwrite',
+						publishingPolicy: 'preserve-target-state',
 						layoutConflictPolicy: 'follow-package',
 						credentialPersonalRoute: 'exclude',
 					},
@@ -2684,7 +2685,7 @@ describe('PromotionsService', () => {
 
 						expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
 						expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledExactlyOnceWith(
-							expect.anything(),
+							expect.objectContaining({ publishingPolicy: 'preserve-target-state' }),
 							expect.any(GitCommitPackageReader),
 							{
 								selectedProjectId: 'p1',
