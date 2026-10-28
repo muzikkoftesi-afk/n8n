@@ -8,6 +8,7 @@ import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
 import { ManualChatModal } from './components/ManualChatModal';
+import { MessageBox } from './components/messageBoxLocators';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
@@ -474,6 +475,65 @@ export class CanvasPage extends BasePage {
 
 	async closeProductionChecklist(): Promise<void> {
 		await this.clickByTestId('suggested-actions-close');
+	}
+
+	getProductionChecklistIgnoreAllButton(): Locator {
+		return this.page.getByTestId('suggested-action-ignore-all');
+	}
+
+	async clickProductionChecklistIgnoreAll(): Promise<void> {
+		await this.getProductionChecklistIgnoreAllButton().click();
+	}
+
+	async ignoreProductionChecklistAction(index = 0): Promise<void> {
+		await this.getProductionChecklistActionItem().nth(index).getByTitle('Ignore').click();
+	}
+
+	async waitForPublicationStatusResponse(): Promise<void> {
+		await this.page.waitForResponse(
+			(response) =>
+				response.url().includes('/publication-status') && response.request().method() === 'GET',
+		);
+	}
+
+	/** Reads the checklist's "first activated" date for a workflow from browser storage. */
+	async getChecklistFirstActivatedAt(workflowId: string): Promise<number | undefined> {
+		return await this.page.evaluate(
+			async (id) =>
+				await new Promise<number | undefined>((resolve) => {
+					const request = indexedDB.open('n8n-local');
+					request.onerror = () => resolve(undefined);
+					request.onsuccess = () => {
+						const db = request.result;
+						try {
+							const get = db.transaction('workflows', 'readonly').objectStore('workflows').get(id);
+							get.onsuccess = () => {
+								db.close();
+								const value = (get.result as { value?: string } | undefined)?.value;
+								resolve(
+									value
+										? (JSON.parse(value) as { firstActivatedAt?: number }).firstActivatedAt
+										: undefined,
+								);
+							};
+							get.onerror = () => {
+								db.close();
+								resolve(undefined);
+							};
+						} catch {
+							db.close();
+							resolve(undefined);
+						}
+					};
+				}),
+			workflowId,
+		);
+	}
+
+	async confirmIgnoreAllForAllWorkflows(): Promise<void> {
+		const messageBox = new MessageBox(this.page);
+		await expect(messageBox.root).toBeVisible();
+		await messageBox.buttonByText(/ignore for all workflows/i).click();
 	}
 
 	getErrorActionItem(): Locator {
