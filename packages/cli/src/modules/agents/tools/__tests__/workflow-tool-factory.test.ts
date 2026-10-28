@@ -1183,6 +1183,7 @@ describe('workflow tool → background job handoff', () => {
 			result: '{"Result":[{"approved":true}]}',
 			error: null,
 			files: null,
+			skippedFiles: null,
 		});
 		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
@@ -1259,6 +1260,7 @@ describe('workflow tool → background job handoff', () => {
 			result: null,
 			error: 'boom',
 			files: null,
+			skippedFiles: null,
 		});
 	});
 
