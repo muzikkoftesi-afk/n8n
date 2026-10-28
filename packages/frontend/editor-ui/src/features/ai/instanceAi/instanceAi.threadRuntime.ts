@@ -130,7 +130,7 @@ type SetupChatTelemetryContext = Pick<
 const MAX_DEBUG_EVENTS = 1000;
 /** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
 /** How an onboarding thread ended; the telemetry value of each exit. */
-export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
+export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed' | 'canvas';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
 	['leave-onboarding', 'left'],
@@ -181,6 +181,8 @@ export interface ThreadRuntimeHooks {
 		outcome: OnboardingExitOutcome,
 		leaveReason?: string,
 	) => void;
+	/** An onboarding card answer asked for a blank canvas ("build it myself"). */
+	onOnboardingCanvas?: (threadId: string) => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
@@ -1127,12 +1129,22 @@ export function createThreadRuntime(
 		);
 	}
 
+	/** Runs the host wrote with no model call (onboarding steps), from their `run-start` mark. */
+	const hostSeededRunIds = new Set<string>();
+	function isHostSeededRun(runId: string | undefined): boolean {
+		return runId !== undefined && hostSeededRunIds.has(runId);
+	}
+
 	function onSSEMessage(sseEvent: MessageEvent): void {
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
 			if (!parsed.success) {
 				console.warn('[InstanceAI] Invalid SSE event, skipping:', parsed.error.message);
 				return;
+			}
+			// Before the reducer adds the message, so the view sees the mark with it.
+			if (parsed.data.type === 'run-start' && parsed.data.payload.hostSeeded) {
+				hostSeededRunIds.add(parsed.data.runId);
 			}
 			// Event ids come from a shared per-thread sequence, so they are valid
 			// across mains — but concurrent producers on different mains can arrive
@@ -1793,6 +1805,7 @@ export function createThreadRuntime(
 				payload,
 			);
 			ensureSSEConnected();
+			if (response.navigateTo === 'new-workflow') hooks.onOnboardingCanvas?.(threadId);
 			if (shouldRearmRunAfterConfirm(payload)) {
 				rearmRunState(
 					resolveActiveRunId({
@@ -1916,6 +1929,7 @@ export function createThreadRuntime(
 		cancelBackgroundTask,
 		amendAgent,
 		confirmAction,
+		isHostSeededRun,
 		confirmResourceDecision,
 		resolveConfirmation,
 		resolveActionSource,
