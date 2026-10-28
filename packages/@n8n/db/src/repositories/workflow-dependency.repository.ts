@@ -214,6 +214,10 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		// care about the specific previous published version id.
 		const publishedVersionCondition = dependencies.publishedVersionId ? Not(IsNull()) : IsNull();
 
+		// Lock the workflow row before any dependency row. Every index writer takes the
+		// locks in this order, so concurrent writers wait instead of deadlocking.
+		await this.lockWorkflowRow(workflowId, tx);
+
 		// Replace rows from an older workflow version, and rows an older indexer
 		// version wrote for the current workflow version.
 		const outdatedVersionResult = await tx.delete(WorkflowDependency, {
@@ -247,14 +251,13 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			return true;
 		}
 
-		// Nothing was deleted - either no existing data, or existing data is newer/same version
-		// Check if any dependencies exist for this workflow. We lock for update to avoid a race
-		// when two processes try to insert dependencies for the same workflow at the same time.
-		const hasData = await this.acquireLockAndCheckForExistingData(
+		// Nothing was deleted - either no existing data, or existing data is newer/same version.
+		// The workflow row lock stops two processes from inserting rows for the same workflow
+		// at the same time.
+		const hasData = await tx.existsBy(WorkflowDependency, {
 			workflowId,
-			dependencies.publishedVersionId,
-			tx,
-		);
+			publishedVersionId: dependencies.publishedVersionId ?? IsNull(),
+		});
 
 		if (!hasData) {
 			// There's no existing data, so we can safely insert the new dependencies.
@@ -295,30 +298,52 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	private async acquireLockAndCheckForExistingData(
-		workflowId: string,
-		publishedVersionId: string | null,
-		tx: EntityManager,
-	): Promise<boolean> {
-		// Build where conditions with publishedVersionId filter
-		const whereConditions: Record<string, unknown> = {
-			workflowId,
-			publishedVersionId: publishedVersionId ?? IsNull(),
-		};
+	/**
+	 * Remove the published dependencies of a workflow that is no longer published.
+	 *
+	 * Draft index writes only prune draft rows, so without this the rows of the last
+	 * published version stay after unpublish. The workflow row is locked and re-checked
+	 * inside the transaction, so a concurrent republish cannot write its rows between
+	 * the check and the delete.
+	 *
+	 * @param workflowId The ID of the workflow
+	 * @returns Whether any dependencies were removed
+	 */
+	async removePublishedDependenciesForUnpublishedWorkflow(workflowId: string): Promise<boolean> {
+		return await this.manager.transaction(async (tx) => {
+			await this.lockWorkflowRow(workflowId, tx);
+			const workflow = await tx.findOne(WorkflowEntity, {
+				select: { id: true, activeVersionId: true },
+				where: { id: workflowId },
+			});
+			if (workflow?.activeVersionId) return false;
 
-		if (this.databaseConfig.type === 'sqlite') {
-			// We skip the explicit locking here. SQLite locks the entire database for writes,
-			// so the prepareTransactionForSqlite step ensures no concurrent writes happen.
-			return await tx.existsBy(WorkflowDependency, whereConditions);
-		}
-		// For Postgres we lock on the workflow row, and only then check the dependency table.
-		// This prevents a race between two concurrent updates.
+			const deleteResult = await tx.delete(WorkflowDependency, {
+				workflowId,
+				publishedVersionId: Not(IsNull()),
+			});
+
+			return (deleteResult.affected ?? 0) > 0;
+		});
+	}
+
+	/**
+	 * Lock the workflow row until the transaction ends. Writers of the same workflow's
+	 * index rows, and writers of its `activeVersionId`, wait for the lock.
+	 *
+	 * Take this lock before you touch any dependency row. A dependency insert checks
+	 * its foreign key against the workflow row, so a writer that holds dependency rows
+	 * and then waits for the workflow row can deadlock with one that does the reverse.
+	 */
+	private async lockWorkflowRow(workflowId: string, tx: EntityManager): Promise<void> {
+		// SQLite locks the entire database for writes, so no explicit row lock is needed.
+		if (this.databaseConfig.type === 'sqlite') return;
+
 		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';
 		const tableName = this.getTableName('workflow_entity');
 		await tx.query(`SELECT id FROM ${tableName} WHERE id = ${placeholder} FOR UPDATE`, [
 			workflowId,
 		]);
-		return await tx.existsBy(WorkflowDependency, whereConditions);
 	}
 
 	private getTableName(name: string): string {
