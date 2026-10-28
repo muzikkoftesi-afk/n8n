@@ -66,9 +66,12 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			if (!(await this.threadRepository.lockById(job.parentThreadId, ctx))) {
 				throw new UserError('Session not found');
 			}
+
 			if ((await this.countActiveSubAgentsByParentThread(job.parentThreadId, ctx)) >= limit)
 				return false;
+
 			await manager.insert(AgentBackgroundJob, { ...job, status: 'running' });
+
 			return true;
 		});
 	}
@@ -178,8 +181,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.where({ parentThreadId, id: In(ids) })
 			.andWhere('settledAt IS NOT NULL')
 			.andWhere('notifiedAt IS NULL');
+
 		if (!includePauseReports) query.andWhere('pauseRequestId IS NULL');
+
 		const result = await query.execute();
+
 		return result.affected ?? 0;
 	}
 
@@ -201,6 +207,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.andWhere('checkpoint.state = :state')
 			.andWhere('checkpoint.expired = :expired')
 			.getQuery();
+
 		return `EXISTS ${checkpoint}`;
 	}
 
@@ -274,10 +281,13 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.andWhere('checkpoint.state IS NOT NULL')
 			.andWhere('checkpoint.updatedAt > :updatedAfter')
 			.getQuery();
+
 		const query = this.createQueryBuilder('job')
 			.where({ kind: 'subagent', status: 'paused' })
 			.andWhere(`NOT EXISTS ${checkpoint}`, { expired: false, updatedAfter });
+
 		if (parentThreadId) query.andWhere('job.parentThreadId = :parentThreadId', { parentThreadId });
+
 		return await query.getMany();
 	}
 
@@ -300,6 +310,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.where({ id, status: 'running' })
 			.andWhere(this.matchCheckpoint(), { runId, state, expired: false })
 			.execute();
+
 		return result.affected === 1;
 	}
 
@@ -308,10 +319,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			{ id, status: 'suspended', pauseRequestId: IsNull() },
 			{ status: 'running', timeoutAt, notifiedAt: null },
 		);
+
 		return result.affected === 1;
 	}
 
-	async requestPause(
+	async requestPauseForActiveJobs(
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId: string,
@@ -319,13 +331,40 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	): Promise<void> {
 		await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(parentThreadId, ctx);
+
 			await manager
 				.createQueryBuilder()
 				.update(AgentBackgroundJob)
 				.set({ pauseRequestId, notifiedAt: null })
-				.where({ parentAgentId, parentThreadId, parentResourceId })
+				.where({
+					parentAgentId,
+					parentThreadId,
+					parentResourceId,
+				})
 				.andWhere("status IN ('running', 'suspended')")
+				// Keep the existing Stop group until its notification is delivered.
 				.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)')
+				.execute();
+		});
+	}
+
+	async requestPauseForCapturedJobs(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId: string,
+		pauseRequestId: string,
+		jobIds: string[],
+	): Promise<void> {
+		await this.runInTransaction({}, async (manager, ctx) => {
+			await this.threadRepository.lockById(parentThreadId, ctx);
+
+			await manager
+				.createQueryBuilder()
+				.update(AgentBackgroundJob)
+				.set({ pauseRequestId, notifiedAt: null })
+				.where({ parentAgentId, parentThreadId, parentResourceId, id: In(jobIds) })
+				// Include unreported results from jobs that finished after capture.
+				.andWhere("(status IN ('running', 'suspended') OR notifiedAt IS NULL)")
 				.execute();
 		});
 	}
