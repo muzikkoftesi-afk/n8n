@@ -8,7 +8,7 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
-import type { OtelConfig } from '../otel.config';
+import { OtelBaggageConfig, type OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
@@ -198,6 +198,7 @@ describe('OtelService', () => {
 			sdk,
 			moduleRegistry,
 			publisher,
+			new OtelBaggageConfig(),
 		);
 
 	beforeEach(() => {

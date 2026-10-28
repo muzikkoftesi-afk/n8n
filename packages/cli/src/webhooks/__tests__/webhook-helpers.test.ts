@@ -81,6 +81,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
+import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -107,6 +108,7 @@ import {
 	invokeWebhook,
 	handleImmediateWebhookResponse,
 	checkTriggerCredentialGate,
+	extractTracingContext,
 } from '../webhook-helpers';
 import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
@@ -1338,6 +1340,56 @@ describe('getWebhookErrorMessage', () => {
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
 			'Error: Workflow could not be started',
 		);
+	});
+});
+
+describe('extractTracingContext', () => {
+	const traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
+	const otelSettingsService = mockInstance(OtelSettingsService);
+
+	beforeEach(() => {
+		otelSettingsService.shouldPropagateBaggage.mockReturnValue(false);
+	});
+
+	it('returns undefined without trace headers', () => {
+		expect(extractTracingContext({})).toBeUndefined();
+	});
+
+	it('reads traceparent and tracestate', () => {
+		expect(extractTracingContext({ traceparent, tracestate: 'vendor=1' })).toEqual({
+			traceparent,
+			tracestate: 'vendor=1',
+		});
+	});
+
+	it('ignores an invalid traceparent', () => {
+		expect(extractTracingContext({ traceparent: 'not-a-traceparent' })).toBeUndefined();
+	});
+
+	it('ignores baggage when baggage propagation is off', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' })).toEqual({
+			traceparent,
+		});
+	});
+
+	it('reads baggage without n8n. entries when baggage propagation is on', () => {
+		otelSettingsService.shouldPropagateBaggage.mockReturnValue(true);
+
+		expect(
+			extractTracingContext({ traceparent, baggage: 'tenant=acme,n8n.execution.id=forged' }),
+		).toEqual({ traceparent, baggage: 'tenant=acme' });
+	});
+
+	it('reads baggage without a traceparent', () => {
+		otelSettingsService.shouldPropagateBaggage.mockReturnValue(true);
+
+		expect(extractTracingContext({ baggage: 'tenant=acme' })).toEqual({ baggage: 'tenant=acme' });
+	});
+
+	it('returns undefined when no baggage entry is left', () => {
+		otelSettingsService.shouldPropagateBaggage.mockReturnValue(true);
+
+		expect(extractTracingContext({ baggage: 'n8n.workflow.id=forged' })).toBeUndefined();
 	});
 });
 

@@ -22,7 +22,7 @@ import { withExecutionIdentity } from '../execution-identity';
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import { OtelSettingsController } from '../otel-settings.controller';
 import type { OtelSettingsService } from '../otel-settings.service';
-import type { OtelConfig } from '../otel.config';
+import { OtelBaggageConfig, type OtelConfig } from '../otel.config';
 import { ATTR } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
@@ -122,6 +122,7 @@ describe('OtelService on the startup OTel setup', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let service: OtelService;
 	let publisher: ReturnType<typeof mock<Publisher>>;
+	let baggageConfig: OtelBaggageConfig;
 
 	beforeEach(() => {
 		process.env.OTEL_NODE_RESOURCE_DETECTORS = 'env';
@@ -147,6 +148,7 @@ describe('OtelService on the startup OTel setup', () => {
 		otelSdk.start();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
+		baggageConfig = new OtelBaggageConfig();
 		service = new OtelService(
 			otelSettingsService,
 			mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' }),
@@ -155,6 +157,7 @@ describe('OtelService on the startup OTel setup', () => {
 			otelSdk,
 			mock<ModuleRegistry>(),
 			publisher,
+			baggageConfig,
 		);
 	});
 
@@ -409,6 +412,61 @@ describe('OtelService on the startup OTel setup', () => {
 			expect(Object.keys(headers)).toEqual(headerNames);
 		},
 	);
+
+	describe('caller baggage', () => {
+		const withCallerBaggage = (span: ReturnType<typeof startWorkflowSpan>) =>
+			propagation.setBaggage(
+				trace.setSpan(ROOT_CONTEXT, span),
+				propagation.createBaggage({ tenant: { value: 'acme' } }),
+			);
+
+		it('sends the baggage of the given context when baggage propagation is on', async () => {
+			baggageConfig.propagate = true;
+			await service.init();
+
+			const headers: Record<string, string> = {};
+			propagation.inject(withCallerBaggage(startWorkflowSpan()), headers);
+
+			expect(Object.keys(headers).sort()).toEqual(['baggage', 'traceparent']);
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('sends no baggage when baggage propagation is off', async () => {
+			await service.init();
+
+			const headers: Record<string, string> = {};
+			propagation.inject(withCallerBaggage(startWorkflowSpan()), headers);
+
+			expect(Object.keys(headers)).toEqual(['traceparent']);
+		});
+
+		it('sends no headers when injectOutbound is false', async () => {
+			baggageConfig.propagate = true;
+			otelSettingsService.loadSettings.mockResolvedValue({
+				...enabledSettings,
+				injectOutbound: false,
+			});
+			await service.init();
+
+			const headers: Record<string, string> = {};
+			propagation.inject(withCallerBaggage(startWorkflowSpan()), headers);
+
+			expect(headers).toEqual({});
+		});
+
+		it('never reads an inbound baggage header into the context', async () => {
+			baggageConfig.propagate = true;
+			await service.init();
+
+			const extracted = propagation.extract(ROOT_CONTEXT, {
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+				baggage: 'tenant=acme,n8n.execution.id=forged',
+			});
+
+			expect(trace.getSpanContext(extracted)).toBeDefined();
+			expect(propagation.getBaggage(extracted)).toBeUndefined();
+		});
+	});
 
 	it('adds the execution identity of an n8n context to exported spans', async () => {
 		await service.init();

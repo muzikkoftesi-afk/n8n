@@ -33,7 +33,8 @@ Only these tracers export spans:
 - Workflow spans never join a trace that is active in the process. An inbound `traceparent`
   header still sets the parent.
 - n8n sends `traceparent` on outbound requests only when OTel is on and
-  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. It never sends `baggage`.
+  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. It sends `baggage` only as described in
+  [Caller baggage](#caller-baggage).
 
 `OTEL_*` env vars fill in what the n8n settings do not set:
 
@@ -55,7 +56,8 @@ There are two ways to add the headers:
   its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
   helper is public, so a community node can use it too.
 
-`getTraceHeaders()` returns `traceparent`, and also `tracestate` when the trace has one. It
+`getTraceHeaders()` returns `traceparent`, and also `tracestate` when the trace has one, and
+`baggage` when the execution has caller baggage. It
 returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
 off, or when no execution runs. Use the result without a guard.
 
@@ -89,8 +91,42 @@ project name holds the user's name and email.
   when the project lookup fails. A reconstructed crash span reads it, so it shows the
   identity of the last segment.
 
-This key is n8n's single source of truth for the execution identity. Inbound and outbound
-baggage (GOV-143) decides what it reads from this key and what it adds to baggage.
+This key is n8n's single source of truth for the execution identity. n8n never puts the
+identity in outbound baggage.
+
+### Caller baggage
+
+n8n can forward the W3C `baggage` header of a webhook call to the requests that the execution
+sends. A downstream service can then put the same entries (for example a tenant id) on its own
+telemetry.
+
+| Environment variable                | Default | Effect                                         |
+| ----------------------------------- | ------- | ---------------------------------------------- |
+| `N8N_OTEL_TRACES_PROPAGATE_BAGGAGE` | `false` | Read caller baggage on webhooks and send it on |
+
+- The variable is env-only for now. It is not on the OTel settings page or in the public API.
+  Set it on all main, worker and webhook instances. A restart applies a change.
+- n8n sends the baggage only when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is also on. It uses the same
+  paths as `traceparent`: `httpRequest`, `request` and `getTraceHeaders()`.
+- **Inbound.** When OTel, outbound injection and this setting are on, the webhook reads
+  `baggage` next to `traceparent`, also when no `traceparent` is sent. n8n drops each entry with a key that starts with `n8n.` (any case), because n8n owns
+  that prefix. n8n also drops entries over the W3C limits: 180 entries, 4096 bytes for each
+  entry and 8192 bytes in total. When n8n drops an entry, it logs one warning with counts only.
+- **Persistence.** The result is saved in `tracingContext.baggage` on the execution. Each
+  segment saves it again, so a queue-mode worker, a resume after a Wait node, a sub-workflow
+  and an error workflow send the same baggage. The public API does not return it.
+- **Not on spans, not in the context.** Caller entries never become span attributes. n8n holds
+  them next to the workflow span, never on an OTel context that becomes active. Agent runs, span
+  processors and libraries that read the active context cannot see them. To show a baggage value
+  on a span, add a custom span attribute to a node with an expression that reads the webhook
+  header, for example `{{ $('Webhook').item.json.headers.baggage }}`. This value is the raw
+  header, before n8n drops `n8n.` entries.
+- **Write only, never read.** The global propagator writes all outbound headers. With the
+  variable on, it gets an outbound baggage propagator that writes `baggage` but never reads it.
+  Libraries such as Sentry's HTTP integration read inbound headers with the global propagator.
+  A full baggage propagator would put the raw `baggage` of every request on the active context.
+- **Another OTel setup.** When another OTel setup owns the global propagator, n8n sends the
+  headers that this setup writes.
 
 ### Start marker spans
 

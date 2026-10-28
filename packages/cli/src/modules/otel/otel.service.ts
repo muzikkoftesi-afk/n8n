@@ -3,7 +3,8 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 import { raceAbort } from '@n8n/utils/race-abort';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import type { TextMapPropagator } from '@opentelemetry/api';
+import { CompositePropagator, W3CTraceContextPropagator } from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
 	BasicTracerProvider,
@@ -23,9 +24,10 @@ import {
 } from './otel-exporter.factory';
 import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
-import type { OtelConfig } from './otel.config';
+import { OtelBaggageConfig, type OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 import { mergeResourceAttributes } from './otel-span-exporter';
+import { OutboundBaggagePropagator } from './outbound-baggage-propagator';
 
 import { N8N_VERSION } from '@/constants';
 import { OtelSdk } from '@/observability/otel-sdk';
@@ -74,6 +76,7 @@ export class OtelService {
 		private readonly otelSdk: OtelSdk,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly publisher: Publisher,
+		private readonly baggageConfig: OtelBaggageConfig,
 	) {}
 
 	async init(): Promise<void> {
@@ -212,7 +215,7 @@ export class OtelService {
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
 			propagator: settings.injectOutbound
-				? new W3CTraceContextPropagator()
+				? outboundPropagator(this.baggageConfig.propagate)
 				: TRACING_OFF.propagator,
 		};
 	}
@@ -273,4 +276,10 @@ export class OtelService {
 			});
 		}
 	}
+}
+
+function outboundPropagator(propagateBaggage: boolean): TextMapPropagator {
+	const traceContext = new W3CTraceContextPropagator();
+	if (!propagateBaggage) return traceContext;
+	return new CompositePropagator({ propagators: [traceContext, new OutboundBaggagePropagator()] });
 }

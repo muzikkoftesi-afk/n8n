@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
+import { OtelBaggageConfig } from '../otel.config';
 import { OtelService } from '../otel.service';
 
 import type { OtelSdk } from '@/observability/otel-sdk';
@@ -57,6 +58,7 @@ describe('OtelService with real gRPC dependencies', () => {
 			mock<OtelSdk>(),
 			mock<ModuleRegistry>(),
 			mock<Publisher>(),
+			new OtelBaggageConfig(),
 		);
 	});
 

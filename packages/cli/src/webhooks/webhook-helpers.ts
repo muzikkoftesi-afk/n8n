@@ -60,6 +60,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import type { IncomingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
@@ -81,6 +82,8 @@ import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service
 import { OwnershipService } from '@/services/ownership.service';
 import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
+import { sanitizeInboundBaggage } from '@/modules/otel/inbound-baggage';
+import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -1323,19 +1326,8 @@ export async function executeWebhook(
 			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
-		// Extract W3C trace context from webhook headers for OTEL propagation.
-		const traceparent = req.headers.traceparent;
-		if (
-			typeof traceparent === 'string' &&
-			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
-		) {
-			const tracestate = req.headers.tracestate;
-			runData.tracingContext = {
-				traceparent,
-				tracestate:
-					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
-			};
-		}
+		const tracingContext = extractTracingContext(req.headers);
+		if (tracingContext) runData.tracingContext = tracingContext;
 
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
@@ -1833,4 +1825,30 @@ function toUnansweredRunResponse(
 				responseCode: 504,
 			};
 	}
+}
+
+/**
+ * Reads the W3C trace context and the caller's baggage from webhook headers for OTel propagation.
+ * Returns undefined when the request has neither.
+ */
+export function extractTracingContext(
+	headers: IncomingHttpHeaders,
+): IWorkflowExecutionDataProcess['tracingContext'] {
+	const tracingContext: NonNullable<IWorkflowExecutionDataProcess['tracingContext']> = {};
+
+	const { traceparent, tracestate } = headers;
+	if (
+		typeof traceparent === 'string' &&
+		/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+	) {
+		tracingContext.traceparent = traceparent;
+		tracingContext.tracestate =
+			typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined;
+	}
+
+	if (Container.get(OtelSettingsService).shouldPropagateBaggage()) {
+		tracingContext.baggage = sanitizeInboundBaggage(headers.baggage, Container.get(Logger));
+	}
+
+	return tracingContext.traceparent || tracingContext.baggage ? tracingContext : undefined;
 }
