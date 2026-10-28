@@ -278,13 +278,18 @@ spec proves parity without changes.
 on inside a worker. The engine database is emptied once, when the worker takes
 its container.
 
-A workflow built in the UI does not get the setting, and a workflow without it
-runs on the legacy engine. A tagged spec must therefore create its workflow
-through `api.workflows` and run it through `api.workflows.runManually`, which
-fails the test when the run did not reach engine v2. A spec that starts the
-run from the UI instead calls `api.workflows.assertLatestExecutionRoutedToEngine`
-after the run, which checks the same thing. A tag the parity buckets do not
-know also fails the test, and names the three valid tags.
+A workflow saved from the canvas has no `engineType`, so the `n8n` fixture
+merges the stack's settings into the workflows the editor creates and updates.
+An engine type the editor sends, picked in the settings dialog, wins. The
+`canvasRuns` fixture watches every run the page starts and fails the test after
+it when a run stayed on the legacy engine; a test that runs the legacy engine
+on purpose calls `canvasRuns.allowLegacyRuns()`, and a page from
+`n8n.start.withUser()` is not watched. `api.workflows.runManually` and `runRaw`
+fail the same way on the way in. A webhook or trigger run returns no execution
+id, so `waitForExecution` and `waitForExecutionById` check the execution they
+hand back. A spec that reads no execution calls
+`api.workflows.assertLatestExecutionRoutedToEngine` after the run. A tag the
+parity buckets do not know also fails the test, and names the three valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track
