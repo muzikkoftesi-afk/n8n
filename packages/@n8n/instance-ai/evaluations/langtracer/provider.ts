@@ -35,17 +35,27 @@ const REMOVED_SEED_KEYS: Record<string, string> = {
 };
 
 /** Normalize + validate an `export_suite` payload into n8n test cases (same
- *  filter/exclude/tier selection as the disk loader); failures are aggregated so
- *  a drift surfaces every bad case at once. */
+ *  filter/exclude/tier selection as the disk loader). A case that does not load is
+ *  skipped with a warning naming every issue, so one case written for a newer
+ *  harness (a seed field this one predates) does not stop the whole suite. The load
+ *  fails only when no case is valid. */
 export function casesFromExportedFiles(
 	files: ExportedSuite['files'],
-	opts: { suite: string; filter?: string; exclude?: string; tier?: string },
+	opts: {
+		suite: string;
+		filter?: string;
+		exclude?: string;
+		tier?: string;
+		logger?: Pick<EvalLogger, 'warn'>;
+	},
 ): WorkflowTestCaseWithFile[] {
 	const cases: WorkflowTestCaseWithFile[] = [];
 	const errors: string[] = [];
 
 	for (const [filename, raw] of Object.entries(files)) {
 		const fileSlug = filename.replace(/\.json$/i, '');
+		// Name selection first: a case the run leaves out is neither loaded nor reported.
+		if (!nameSelected(fileSlug, opts)) continue;
 		const removed = isRecord(raw)
 			? Object.entries(REMOVED_SEED_KEYS).filter(([key]) => raw[key] !== undefined)
 			: [];
@@ -69,36 +79,27 @@ export function casesFromExportedFiles(
 	}
 
 	if (errors.length > 0) {
-		throw new Error(
-			`Invalid test case(s) exported from lang-tracer suite "${opts.suite}":\n${errors.join('\n')}`,
-		);
+		const report = `Invalid test case(s) exported from lang-tracer suite "${opts.suite}":\n${errors.join('\n')}`;
+		if (cases.length === 0) throw new Error(report);
+		opts.logger?.warn(`${report}\nSkipping ${String(errors.length)} case(s); running the rest.`);
 	}
 
-	return applyCaseSelection(cases, opts);
+	return selectTier(cases, opts.tier);
 }
 
-/** Mirror the disk loader's `--filter` / `--exclude` / `--tier` semantics. */
-function applyCaseSelection(
-	cases: WorkflowTestCaseWithFile[],
-	opts: { filter?: string; exclude?: string; tier?: string },
-): WorkflowTestCaseWithFile[] {
-	let selected = cases;
-
+/** Mirror the disk loader's `--filter` / `--exclude` semantics on a file slug. */
+function nameSelected(fileSlug: string, opts: { filter?: string; exclude?: string }): boolean {
+	const slug = fileSlug.toLowerCase();
 	const includeTokens = parseSubstringList(opts.filter);
-	if (includeTokens.length > 0) {
-		selected = selected.filter(({ fileSlug }) =>
-			includeTokens.some((t) => fileSlug.toLowerCase().includes(t)),
-		);
-	}
+	if (includeTokens.length > 0 && !includeTokens.some((t) => slug.includes(t))) return false;
+	return !parseSubstringList(opts.exclude).some((t) => slug.includes(t));
+}
 
-	const excludeTokens = parseSubstringList(opts.exclude);
-	if (excludeTokens.length > 0) {
-		selected = selected.filter(
-			({ fileSlug }) => !excludeTokens.some((t) => fileSlug.toLowerCase().includes(t)),
-		);
-	}
-
-	const tier = opts.tier;
+/** Mirror the disk loader's `--tier` semantics via the `datasets` field. */
+function selectTier(
+	selected: WorkflowTestCaseWithFile[],
+	tier: string | undefined,
+): WorkflowTestCaseWithFile[] {
 	if (!tier) return selected;
 
 	const matched = selected.filter(({ testCase }) => testCase.datasets.includes(tier));
