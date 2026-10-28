@@ -442,6 +442,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			files.length > 0
 				? await this.outboundFiles.load(params.descriptor.integration.type, files)
 				: [],
+			this.integrationRegistry.get(params.descriptor.integration.type)?.fileUploadLimits
+				?.maxCaptionLength,
 		);
 	}
 
