@@ -7,6 +7,7 @@ import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapLuxonValues } from '../runtime/luxon-transfer';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
 	isErrorSentinel,
@@ -356,7 +357,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
+<<<<<<< HEAD
 				return dispatchHostCall(rawMsg, data);
+=======
+				return escapeHostResult(dispatchHostCall(rawMsg, heldData(holder)));
+>>>>>>> 5d640a22 (fix(core): Return user data with an __isError key as data in expressions (#42316))
 			} catch (err) {
 				return serializeError(err);
 			}
