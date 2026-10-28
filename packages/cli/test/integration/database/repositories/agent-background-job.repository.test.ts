@@ -1,3 +1,4 @@
+import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService, type Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -80,7 +81,7 @@ describe('AgentBackgroundJobRepository', () => {
 			parentThreadId: string;
 		},
 	) {
-		await repository.insert({
+		await repository.save({
 			kind: 'subagent',
 			status: 'completed',
 			parentAgentId: agentId,
@@ -93,6 +94,23 @@ describe('AgentBackgroundJobRepository', () => {
 			...overrides,
 		});
 	}
+
+	it.each([
+		['cancelled', null, 'Late result'],
+		['cancelled', 'Saved result', 'Saved result'],
+		['completed', null, null],
+		['failed', null, null],
+		['running', null, null],
+	] as const)(
+		'preserves late output only for a canceled job without output (%s, %s)',
+		async (status, result, expected) => {
+			const id = uuid();
+			await insertJob({ id, parentThreadId: uuid(), status, result });
+			await repository.preserveLateCompletedResult(id, 'Late result');
+
+			expect(await repository.findById(id)).toMatchObject({ status, result: expected });
+		},
+	);
 
 	it('admits five active tasks beside a paused group and fences concurrent spawns', async () => {
 		const parentThreadId = uuid();
@@ -275,6 +293,7 @@ describe('AgentBackgroundJobRepository', () => {
 		logger.scoped.mockReturnValue(logger);
 		const checkpointTtlSeconds = Container.get(AgentsConfig).checkpointTtlSeconds;
 		const service = new AgentBackgroundJobService(
+			mock<AgentExecutionThreadRepository>(),
 			repository,
 			mock<AgentExecutionRepository>(),
 			mock<ExecutionPersistence>(),
@@ -284,7 +303,9 @@ describe('AgentBackgroundJobRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
 			mock<AgentMessageRepository>(),
+			mock<AgentPlanRepository>(),
 		);
+
 		if (recover) {
 			await repository.settleIfActive(finishingId, { status: 'completed', result: 'Done' });
 			await service.reconcile();
@@ -303,6 +324,14 @@ describe('AgentBackgroundJobRepository', () => {
 			});
 		}
 		expect((await repository.findById(foreignId))?.status).toBe('paused');
+
+		if (kind === 'subagent') {
+			expect(await checkpoints.findByRunId(runIds.get(newJobId)!)).toMatchObject({
+				expired: false,
+				state: expect.any(String),
+			});
+		}
+
 		expect(await repository.findById(newJobId)).toMatchObject({
 			status,
 			error: status === 'failed' ? 'Workflow failed' : null,
@@ -418,6 +447,8 @@ describe('AgentBackgroundJobRepository', () => {
 		const jobs = await repository.findGroupCandidates(agentId, 'thread-1');
 		expect(jobs).toHaveLength(1);
 		expect({ ...jobs[0] }).toEqual({
+			planId: null,
+			planTaskId: null,
 			id,
 			kind: 'subagent',
 			title: 'Research',
@@ -511,6 +542,7 @@ describe('AgentBackgroundJobRepository', () => {
 		).toEqual([first, second, workflow].sort());
 		expect((await repository.findById(otherResource))?.pauseRequestId).toBeNull();
 		expect((await repository.findById(otherThread))?.pauseRequestId).toBeNull();
+
 		expect(await repository.resumeIfSuspended(second, new Date())).toBe(false);
 		expect(await repository.findById(second)).toMatchObject({
 			status: 'suspended',
@@ -799,6 +831,7 @@ describe('AgentBackgroundJobRepository', () => {
 
 	it('settles a job, delays its wake, retries delivery, and marks the result as delivered', async () => {
 		vi.useFakeTimers();
+
 		try {
 			const jobId = uuid();
 			// The owner role grants the agent:execute permission required for a wake.
@@ -840,6 +873,7 @@ describe('AgentBackgroundJobRepository', () => {
 				return affected;
 			});
 			const jobService = new AgentBackgroundJobService(
+				mock<AgentExecutionThreadRepository>(),
 				repository,
 				executionRepository,
 				mock<ExecutionPersistence>(),
@@ -849,6 +883,7 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentExecutionUpdateBroadcaster>(),
 				checkpointStorage,
 				mock<AgentMessageRepository>(),
+				mock<AgentPlanRepository>(),
 			);
 			const wakeService = new AgentWakeService(
 				repository,
